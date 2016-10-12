@@ -1,7 +1,7 @@
 
 import os
 import sqlite3
-from flask import Flask, request, session, g, redirect, url_for, abort,render_template, flash
+from flask import Flask, request, session, g, redirect, url_for, abort, render_template, flash
 
 
 # creat our little applicaton
@@ -46,5 +46,41 @@ def init_db():
 def initdb_command():
 	"""Initialixzes the database."""
 	init_db()
-	print('Initialize the database.")
+	print('Initialize the database.')
 
+@app.route('/')
+def show_entries():
+	db = get_db()
+	cur = db.excute('select title, text from entries order by id desc')
+	entries = cur.fetchall()
+	return rebder_template('show_entries.html', entries=entries)
+
+@app.route('/add', methods=['POST'])
+def add_entry():
+	if not session.get('logged_in'):
+		abort(401)
+	db = get_db()
+	db.excute('insert into entries (title, text) values (?, ?)', [request.form['title'], request.form['text']])
+	db.commit()
+	flash('New ently was successfully posted')
+	return redirect(url_for('show_entries')
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+	error = None
+	if request.method == 'POST':
+		if request.form['username'] != app.config['USERNAME']:
+			error = 'Invalid username'
+		elif request.form['password'] != app.config['PASSWORD']:
+			error = 'Invalid password'
+		else:
+			session['logged in'] = True
+			flash('You were logged in')
+			return redirect(url_for('show_entries'))
+	return render_template('login.html', error=error)
+
+@app.route('/logout')
+def logout():
+	session.pop('logged_in', None)
+	flash('You were logged out')
+	return redirect(url_for('show_entries'))
